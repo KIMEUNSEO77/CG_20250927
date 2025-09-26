@@ -29,6 +29,7 @@ GLuint fragmentShader;
 float mouseX = 0.0f, mouseY = 0.0f;
 
 GLuint axisVAO = 0, axisVBO = 0;   // line 용 vao, vbo
+int addedSpace = -1;  // 방금 추가된 삼각형 사분면
 
 struct Tng
 {
@@ -36,6 +37,7 @@ struct Tng
 	vector<glm::vec3> vertices;
 	glm::vec4 color;
 	int vertCount() const { return (int)vertices.size(); }
+	int space;   // 몇 사분면인지
 };
 vector<Tng> tngs;
 
@@ -85,6 +87,7 @@ void InitRng()
 		float g = randomFloat(0.0f, 1.0f);
 		float b = randomFloat(0.0f, 1.0f);
 		tng.color = { glm::vec4(r, g, b, 1.0) };
+		tng.space = i;
 		updateTng(tng);
 		tngs.push_back(tng);
 	}
@@ -95,12 +98,42 @@ void AddTriangle(float nx, float ny)
 {
 	if (tngs.size() >= 10) return; // 최대 10개 도형
 	Tng tng;
-    tng.color = glm::vec4(0.0, 0.0, 1.0, 1.0); // 파란색
+	float r = randomFloat(0.0f, 1.0f);
+	float g = randomFloat(0.0f, 1.0f);
+	float b = randomFloat(0.0f, 1.0f);
+	tng.color = { glm::vec4(r, g, b, 1.0) };
 	tng.vertices = { glm::vec3(nx, ny, 0.0f), 
 		glm::vec3(nx - 0.05f, ny - 0.2f, 0.0f), 
 		glm::vec3(nx + 0.05f, ny - 0.2f, 0.0f) };
+	// 사분면 판별
+	int spaceIdx = -1;
+	for (int i = 0; i < 4; ++i) 
+	{
+		if (nx >= spaces[i].left && nx <= spaces[i].right &&
+			ny - 0.1f >= spaces[i].bottom && ny - 0.1f <= spaces[i].top) 
+		{
+			spaceIdx = i;
+			break;
+		}
+	}
+	tng.space = spaceIdx;
+
 	updateTng(tng);
 	tngs.push_back(tng);
+	addedSpace = tng.space;
+}
+
+// 삼각형 삭제
+void RemoveTriangle()
+{
+	for (int i = 0; i < tngs.size(); i++)
+	{
+		if (addedSpace == tngs[i].space)
+		{
+			tngs.erase(tngs.begin() + i);
+			break; // 삭제 후 반복문 종료
+		}
+	}
 }
 
 // 선 그리기
@@ -169,6 +202,7 @@ void Mouse(int button, int state, int x, int y)
 		{
 			PixelTrans(x, y, mouseX, mouseY);
 			AddTriangle(mouseX, mouseY);
+			RemoveTriangle();
 		}
 	}
 	glutPostRedisplay();
