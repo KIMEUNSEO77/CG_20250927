@@ -30,6 +30,9 @@ float mouseX = 0.0f, mouseY = 0.0f;
 
 GLuint axisVAO = 0, axisVBO = 0;   // line 용 vao, vbo
 int addedSpace = -1;  // 방금 추가된 삼각형 사분면
+int spaceCount[4] = {1, 1, 1, 1};   // 해당 사분면에 삼각형이 몇 개 있는지
+
+bool isFill = true;
 
 struct Tng
 {
@@ -73,7 +76,7 @@ float randomFloat(float a, float b)
 }
 
 // 처음 각 사분면에 삼각형 그리기
-void InitRng()
+void InitTng()
 {
 	for (int i = 0; i < 4; i++)
 	{
@@ -96,7 +99,6 @@ void InitRng()
 // 삼각형 추가
 void AddTriangle(float nx, float ny)
 {
-	if (tngs.size() >= 10) return; // 최대 10개 도형
 	Tng tng;
 	float r = randomFloat(0.0f, 1.0f);
 	float g = randomFloat(0.0f, 1.0f);
@@ -133,6 +135,41 @@ void RemoveTriangle()
 			tngs.erase(tngs.begin() + i);
 			break; // 삭제 후 반복문 종료
 		}
+	}
+}
+
+// 삼각형 추가(오른쪽 버튼)
+void AddTriangle2(float nx, float ny)
+{
+	Tng tng;
+	float r = randomFloat(0.0f, 1.0f);
+	float g = randomFloat(0.0f, 1.0f);
+	float b = randomFloat(0.0f, 1.0f);
+	tng.color = { glm::vec4(r, g, b, 1.0) };
+	tng.vertices = { glm::vec3(nx, ny, 0.0f),
+		glm::vec3(nx - 0.05f, ny - 0.2f, 0.0f),
+		glm::vec3(nx + 0.05f, ny - 0.2f, 0.0f) };
+	// 사분면 판별
+	int spaceIdx = -1;
+	for (int i = 0; i < 4; ++i)
+	{
+		if (nx >= spaces[i].left && nx <= spaces[i].right &&
+			ny - 0.1f >= spaces[i].bottom && ny - 0.1f <= spaces[i].top)
+		{
+			spaceIdx = i;
+			break;
+		}
+	}
+	tng.space = spaceIdx;
+	if (tng.space >= 0 && tng.space < 4) 
+	{
+		spaceCount[tng.space] += 1;
+	}
+
+	if (spaceCount[tng.space] <= 4)
+	{
+		updateTng(tng);
+		tngs.push_back(tng);
 	}
 }
 
@@ -205,7 +242,46 @@ void Mouse(int button, int state, int x, int y)
 			RemoveTriangle();
 		}
 	}
+	else if (button == GLUT_RIGHT_BUTTON)
+	{
+		if (state == GLUT_DOWN)
+		{
+			PixelTrans(x, y, mouseX, mouseY);
+			AddTriangle2(mouseX, mouseY);	
+		}
+	}
 	glutPostRedisplay();
+}
+
+void Reset()
+{
+	tngs.clear();
+	addedSpace = -1;
+	InitTng();
+	for (int i = 0; i < 4; i++)
+		spaceCount[i] = 1;
+	glutPostRedisplay();
+}
+
+void Keyboard(unsigned char key, int x, int y)
+{
+	switch (key)
+	{
+	case 'a':
+	    isFill = true;
+		glutPostRedisplay();
+		break;
+	case 'b':
+		isFill = false;
+		glutPostRedisplay();
+		break;
+	case 'c':
+		Reset();
+		break;
+	case 'q':
+		exit(0);
+		break;
+	}
 }
 
 void main(int argc, char** argv)
@@ -224,11 +300,12 @@ void main(int argc, char** argv)
 	shaderProgramID = make_shaderProgram();
 
 	InitCenterCross();  // 처음에 사분면 선
-	InitRng();          // 처음에 각 사분면에 삼각형 그리기
+	InitTng();          // 처음에 각 사분면에 삼각형 그리기
 
 	glutDisplayFunc(drawScene);
 	glutReshapeFunc(Reshape);
 	glutMouseFunc(Mouse);
+	glutKeyboardFunc(Keyboard);
 	glutMainLoop();
 }
 
@@ -308,6 +385,11 @@ GLvoid drawScene()
 	glLineWidth(1.0f);                                // 드라이버 따라 >1.0은 무시될 수 있음
 	glDrawArrays(GL_LINES, 0, 4);                     // 2개의 선분(총 4개 정점)
 	glBindVertexArray(0);
+
+	if (isFill)
+		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	else
+		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
 	for (int i = 0; i < (int)tngs.size(); ++i)
 	{
