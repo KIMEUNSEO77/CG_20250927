@@ -32,6 +32,7 @@ struct Tng
 	glm::vec4 color;
 	// int vertCount() const { return (int)vertices.size(); }
 };
+vector<Tng> trgs;
 
 char* filetobuf(const char* file)
 {
