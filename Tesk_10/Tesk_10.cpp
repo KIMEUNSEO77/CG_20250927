@@ -33,8 +33,17 @@ int addedSpace = -1;  // 방금 추가된 삼각형 사분면
 int spaceCount[4] = { 1, 1, 1, 1 };   // 해당 사분면에 삼각형이 몇 개 있는지
 
 bool isFill = true;
-float speed = 0.0f;
 bool moving[4];  // true인 인덱스대로 움직임
+struct Pos
+{
+	float x;
+	float y;
+};
+// 사각 스파이럴 꼭짓점 좌표
+Pos spiralRect[15] = { {-0.9f, 1.0f}, {-0.9f, -0.8f}, {0.9f, -0.8f}, {0.9f, 0.8f},
+	{-0.7f, 0.8f }, {-0.7f, -0.6f}, {0.7f, -0.6f}, {0.7f, 0.6f}, 
+	{-0.5f, 0.6f}, {-0.5f, -0.4f}, {0.5f, -0.4f}, {0.5f, 0.4f},
+	{-0.3f, 0.4f}, {-0.3f, -0.2f}, {-0.3f, -0.2f} };
 
 struct Tng
 {
@@ -45,6 +54,7 @@ struct Tng
 	int space;   // 몇 사분면인지
 
 	float vx, vy;    // 이동 속도
+	int spiralIdx = 0; // 현재 목표 
 };
 vector<Tng> tngs;
 
@@ -73,7 +83,7 @@ void updateTng(Tng& tng)
 float randomFloat(float a, float b)
 {
 	std::random_device rd;
-	std::mt19937 gen(rd());  // Mersenne Twister 엔진
+	std::mt19937 gen(rd());
 	std::uniform_real_distribution<float> dist(a, b);
 
 	return dist(gen);
@@ -95,6 +105,7 @@ void InitTng()
 		float b = randomFloat(0.0f, 1.0f);
 		tng.color = { glm::vec4(r, g, b, 1.0) };
 		tng.space = i;
+		tng.spiralIdx = 0;
 		updateTng(tng);
 		tngs.push_back(tng);
 	}
@@ -123,6 +134,7 @@ void AddTriangle(float nx, float ny)
 		}
 	}
 	tng.space = spaceIdx;
+	tng.spiralIdx = 0;
 
 	updateTng(tng);
 	tngs.push_back(tng);
@@ -285,7 +297,7 @@ bool IsWallY(Tng& tng, float bottomY, float topY)
 	return false;
 }
 
-void Timer(int value)
+void Moving1()
 {
 	// 삼각형 위치 이동
 	for (int i = 0; i < tngs.size(); i++)
@@ -301,6 +313,91 @@ void Timer(int value)
 		}
 		updateTng(tngs[i]); // VBO 갱신
 	}
+}
+
+void SetSpiral()
+{
+	// 삼각형들을 시작 위치로 한 번만 이동
+	float sx = -0.2f;
+	float sy = 1.0f;
+	for (int i = 0; i < tngs.size(); i++)
+	{
+		float dx = sx - tngs[i].vertices[0].x;
+		float dy = sy - tngs[i].vertices[0].y;
+		for (auto& v : tngs[i].vertices)
+		{
+			v.x += dx;
+			v.y += dy;
+		}
+		tngs[i].spiralIdx = 0; // 스파이럴 인덱스도 0으로 초기화
+		updateTng(tngs[i]);
+		sx += 0.2f;
+	}
+}
+
+// 사각 스파이럴
+void Moving2()
+{
+	float moveSpeed = 0.01f; // 이동 속도(조절 가능)
+
+	for (int i = 0; i < tngs.size(); i++)
+	{
+		Tng& t = tngs[i];
+		// spiralRect의 목표 좌표
+		int idx = t.spiralIdx;
+		if (idx >= 15) continue; // spiralRect 범위 초과 방지
+
+		float tx = spiralRect[idx].x;
+		float ty = spiralRect[idx].y;
+
+		// 현재 삼각형의 기준점(첫 번째 꼭짓점) 위치
+		float cx = t.vertices[0].x;
+		float cy = t.vertices[0].y;
+
+		// 목표점까지의 벡터
+		float dx = tx - cx;
+		float dy = ty - cy;
+		float dist = sqrt(dx * dx + dy * dy);
+
+		// 목표점에 거의 도달하면 다음 인덱스로
+		if (dist < moveSpeed)
+		{
+			// 정확히 목표점에 맞추고 다음 목표로
+			float ddx = tx - cx;
+			float ddy = ty - cy;
+			for (auto& v : t.vertices)
+			{
+				v.x += ddx;
+				v.y += ddy;
+			}
+			t.spiralIdx++;
+			if (t.spiralIdx >= 15) 
+			{
+				// 즉시 시작 위치로 점프
+				SetSpiral();
+				//t.spiralIdx = 1; // 다음 목표는 spiralRect[1]
+			}
+		}
+		else
+		{
+			// 방향 단위벡터로 moveSpeed만큼 이동
+			float mx = dx / dist * moveSpeed;
+			float my = dy / dist * moveSpeed;
+			for (auto& v : t.vertices)
+			{
+				v.x += mx;
+				v.y += my;
+			}
+		}
+		updateTng(t);
+	}
+}
+
+void Timer(int value)
+{
+	if (moving[0] || moving[1]) Moving1();
+	if (moving[2]) Moving2();
+
 	glutPostRedisplay();
 	glutTimerFunc(16, Timer, 0); // 다음 타이머 예약 (16ms ≒ 60fps)
 }
@@ -309,7 +406,7 @@ void Animation()
 {
 	if (moving[0])
 	{
-		speed = 0.03f;
+		float speed = 0.03f;
 		for (auto& t : tngs)
 		{
 			t.vx = speed;
@@ -317,16 +414,20 @@ void Animation()
 		}
 		glutTimerFunc(16, Timer, 0);
 	}
-
 	else if (moving[1])
 	{
-		speed = 0.05f;
+		float dx = 0.05f;
 		float dy = -0.002f;
 		for (auto& t : tngs)
 		{
-			t.vx = speed;
+			t.vx = dx;
 			t.vy = dy;
 		}
+		glutTimerFunc(16, Timer, 0);
+	}
+	else if (moving[2])
+	{
+		SetSpiral();
 		glutTimerFunc(16, Timer, 0);
 	}
 }
@@ -351,6 +452,13 @@ void Keyboard(unsigned char key, int x, int y)
 		Animation();
 		break;
 	case '3':
+		moving[2] = !moving[2];
+		for (int i = 0; i < 4; i++)
+		{
+			if (i == 2) continue;
+			moving[i] = false;
+		}
+		Animation();
 		break;
 	case '4':
 		break;
