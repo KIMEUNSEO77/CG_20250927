@@ -267,6 +267,14 @@ void Keyboard(unsigned char key, int x, int y)
 {
 	switch (key)
 	{
+	case '1':
+		break;
+	case '2':
+		break;
+	case '3':
+		break;
+	case '4':
+		break;
 	case 'a':
 		isFill = true;
 		glutPostRedisplay();
