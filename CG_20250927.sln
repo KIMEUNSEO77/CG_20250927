@@ -1,9 +1,11 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
-VisualStudioVersion = 17.14.36301.6 d17.14
+VisualStudioVersion = 17.14.36301.6
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "CG_20250927", "CG_20250927\CG_20250927.vcxproj", "{403043B6-BC15-49D9-AC3A-FBC472C3FC01}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Tesk_10", "Tesk_10\Tesk_10.vcxproj", "{014F3912-EA7D-4A24-AE04-4B8D4A02F69E}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -21,6 +23,14 @@ Global
 		{403043B6-BC15-49D9-AC3A-FBC472C3FC01}.Release|x64.Build.0 = Release|x64
 		{403043B6-BC15-49D9-AC3A-FBC472C3FC01}.Release|x86.ActiveCfg = Release|Win32
 		{403043B6-BC15-49D9-AC3A-FBC472C3FC01}.Release|x86.Build.0 = Release|Win32
+		{014F3912-EA7D-4A24-AE04-4B8D4A02F69E}.Debug|x64.ActiveCfg = Debug|x64
+		{014F3912-EA7D-4A24-AE04-4B8D4A02F69E}.Debug|x64.Build.0 = Debug|x64
+		{014F3912-EA7D-4A24-AE04-4B8D4A02F69E}.Debug|x86.ActiveCfg = Debug|Win32
+		{014F3912-EA7D-4A24-AE04-4B8D4A02F69E}.Debug|x86.Build.0 = Debug|Win32
+		{014F3912-EA7D-4A24-AE04-4B8D4A02F69E}.Release|x64.ActiveCfg = Release|x64
+		{014F3912-EA7D-4A24-AE04-4B8D4A02F69E}.Release|x64.Build.0 = Release|x64
+		{014F3912-EA7D-4A24-AE04-4B8D4A02F69E}.Release|x86.ActiveCfg = Release|Win32
+		{014F3912-EA7D-4A24-AE04-4B8D4A02F69E}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
