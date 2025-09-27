@@ -1,4 +1,4 @@
-#define _CRT_SECURE_NO_WARNINGS 
+ï»¿#define _CRT_SECURE_NO_WARNINGS 
 #include <stdlib.h>
 #include <stdio.h>
 #include <iostream>
@@ -27,19 +27,20 @@ GLuint vertexShader;
 GLuint fragmentShader;
 
 float mouseX = 0.0f, mouseY = 0.0f;
+bool isTimerRunning = false;   // íƒ€ì´ë¨¸ ì¤‘ë³µ ë°©ì§€
 
-GLuint axisVAO = 0, axisVBO = 0;   // line ¿ë vao, vbo
-int addedSpace = -1;  // ¹æ±İ Ãß°¡µÈ »ï°¢Çü »çºĞ¸é
-int spaceCount[4] = { 1, 1, 1, 1 };   // ÇØ´ç »çºĞ¸é¿¡ »ï°¢ÇüÀÌ ¸î °³ ÀÖ´ÂÁö
+GLuint axisVAO = 0, axisVBO = 0;   // line ìš© vao, vbo
+int addedSpace = -1;  // ë°©ê¸ˆ ì¶”ê°€ëœ ì‚¼ê°í˜• ì‚¬ë¶„ë©´
+int spaceCount[4] = { 1, 1, 1, 1 };   // í•´ë‹¹ ì‚¬ë¶„ë©´ì— ì‚¼ê°í˜•ì´ ëª‡ ê°œ ìˆëŠ”ì§€
 
 bool isFill = true;
-bool moving[4];  // trueÀÎ ÀÎµ¦½º´ë·Î ¿òÁ÷ÀÓ
+bool moving[4];  // trueì¸ ì¸ë±ìŠ¤ëŒ€ë¡œ ì›€ì§ì„
 struct Pos
 {
 	float x;
 	float y;
 };
-// »ç°¢ ½ºÆÄÀÌ·² ²ÀÁşÁ¡ ÁÂÇ¥
+// ì‚¬ê° ìŠ¤íŒŒì´ëŸ´ ê¼­ì§“ì  ì¢Œí‘œ
 Pos spiralRect[15] = { {-0.9f, 1.0f}, {-0.9f, -0.8f}, {0.9f, -0.8f}, {0.9f, 0.8f},
 	{-0.7f, 0.8f }, {-0.7f, -0.6f}, {0.7f, -0.6f}, {0.7f, 0.6f}, 
 	{-0.5f, 0.6f}, {-0.5f, -0.4f}, {0.5f, -0.4f}, {0.5f, 0.4f},
@@ -51,10 +52,10 @@ struct Tng
 	vector<glm::vec3> vertices;
 	glm::vec4 color;
 	int vertCount() const { return (int)vertices.size(); }
-	int space;   // ¸î »çºĞ¸éÀÎÁö
+	int space;   // ëª‡ ì‚¬ë¶„ë©´ì¸ì§€
 
-	float vx, vy;    // ÀÌµ¿ ¼Óµµ
-	int spiralIdx = 0; // ÇöÀç ¸ñÇ¥ 
+	float vx, vy;    // ì´ë™ ì†ë„
+	int spiralIdx = 0; // í˜„ì¬ ëª©í‘œ 
 };
 vector<Tng> tngs;
 
@@ -66,6 +67,9 @@ Space spaces[4] = {
 	{-1.0f, 0.0f, 1.0f, 0.0f}, {0.0f, 1.0f, 1.0f, 0.0f},
 	{-1.0f, 0.0f, 0.0f, -1.0f}, {0.0f, 1.0f, 0.0f, -1.0f}
 };
+
+const int spiralCircleN = 60; // ì  ê°œìˆ˜(ë¶€ë“œëŸ¬ì›€ ì¡°ì ˆ)
+Pos spiralCircle[spiralCircleN];
 
 void updateTng(Tng& tng)
 {
@@ -89,7 +93,7 @@ float randomFloat(float a, float b)
 	return dist(gen);
 }
 
-// Ã³À½ °¢ »çºĞ¸é¿¡ »ï°¢Çü ±×¸®±â
+// ì²˜ìŒ ê° ì‚¬ë¶„ë©´ì— ì‚¼ê°í˜• ê·¸ë¦¬ê¸°
 void InitTng()
 {
 	for (int i = 0; i < 4; i++)
@@ -111,7 +115,7 @@ void InitTng()
 	}
 }
 
-// »ï°¢Çü Ãß°¡
+// ì‚¼ê°í˜• ì¶”ê°€
 void AddTriangle(float nx, float ny)
 {
 	Tng tng;
@@ -122,7 +126,7 @@ void AddTriangle(float nx, float ny)
 	tng.vertices = { glm::vec3(nx, ny, 0.0f),
 		glm::vec3(nx - 0.05f, ny - 0.2f, 0.0f),
 		glm::vec3(nx + 0.05f, ny - 0.2f, 0.0f) };
-	// »çºĞ¸é ÆÇº°
+	// ì‚¬ë¶„ë©´ íŒë³„
 	int spaceIdx = -1;
 	for (int i = 0; i < 4; ++i)
 	{
@@ -141,7 +145,7 @@ void AddTriangle(float nx, float ny)
 	addedSpace = tng.space;
 }
 
-// »ï°¢Çü »èÁ¦
+// ì‚¼ê°í˜• ì‚­ì œ
 void RemoveTriangle()
 {
 	for (int i = 0; i < tngs.size(); i++)
@@ -149,12 +153,12 @@ void RemoveTriangle()
 		if (addedSpace == tngs[i].space)
 		{
 			tngs.erase(tngs.begin() + i);
-			break; // »èÁ¦ ÈÄ ¹İº¹¹® Á¾·á
+			break; // ì‚­ì œ í›„ ë°˜ë³µë¬¸ ì¢…ë£Œ
 		}
 	}
 }
 
-// »ï°¢Çü Ãß°¡(¿À¸¥ÂÊ ¹öÆ°)
+// ì‚¼ê°í˜• ì¶”ê°€(ì˜¤ë¥¸ìª½ ë²„íŠ¼)
 void AddTriangle2(float nx, float ny)
 {
 	Tng tng;
@@ -165,7 +169,7 @@ void AddTriangle2(float nx, float ny)
 	tng.vertices = { glm::vec3(nx, ny, 0.0f),
 		glm::vec3(nx - 0.05f, ny - 0.2f, 0.0f),
 		glm::vec3(nx + 0.05f, ny - 0.2f, 0.0f) };
-	// »çºĞ¸é ÆÇº°
+	// ì‚¬ë¶„ë©´ íŒë³„
 	int spaceIdx = -1;
 	for (int i = 0; i < 4; ++i)
 	{
@@ -189,13 +193,13 @@ void AddTriangle2(float nx, float ny)
 	}
 }
 
-// ¼± ±×¸®±â
+// ì„  ê·¸ë¦¬ê¸°
 void InitCenterCross()
 {
-	// Á¤Áß¾Ó ½ÊÀÚ: (x=0ÀÇ ¼¼·Î¼±) + (y=0ÀÇ °¡·Î¼±)
+	// ì •ì¤‘ì•™ ì‹­ì: (x=0ì˜ ì„¸ë¡œì„ ) + (y=0ì˜ ê°€ë¡œì„ )
 	const float verts[] = {
-		-1.0f,  0.0f, 0.0f,   1.0f,  0.0f, 0.0f,   // °¡·Î¼±: (-1,0) -> (1,0)
-		 0.0f, -1.0f, 0.0f,   0.0f,  1.0f, 0.0f    // ¼¼·Î¼±: (0,-1) -> (0,1)
+		-1.0f,  0.0f, 0.0f,   1.0f,  0.0f, 0.0f,   // ê°€ë¡œì„ : (-1,0) -> (1,0)
+		 0.0f, -1.0f, 0.0f,   0.0f,  1.0f, 0.0f    // ì„¸ë¡œì„ : (0,-1) -> (0,1)
 	};
 
 	glGenVertexArrays(1, &axisVAO);
@@ -240,7 +244,7 @@ char* filetobuf(const char* file)
 	// Return the buffer 
 }
 
-// ¸¶¿ì½º Å¬¸¯ÇÑ ÁÂÇ¥ Á¤±ÔÈ­
+// ë§ˆìš°ìŠ¤ í´ë¦­í•œ ì¢Œí‘œ ì •ê·œí™”
 void PixelTrans(int px, int py, float& nx, float& ny)
 {
 	nx = 2.0f * px / width - 1.0f;
@@ -299,7 +303,7 @@ bool IsWallY(Tng& tng, float bottomY, float topY)
 
 void Moving1()
 {
-	// »ï°¢Çü À§Ä¡ ÀÌµ¿
+	// ì‚¼ê°í˜• ìœ„ì¹˜ ì´ë™
 	for (int i = 0; i < tngs.size(); i++)
 	{
 		if (!IsWallX(tngs[i], tngs[i].vertices[1].x, tngs[i].vertices[2].x))
@@ -311,13 +315,13 @@ void Moving1()
 			v.x += tngs[i].vx;
 			v.y += tngs[i].vy;
 		}
-		updateTng(tngs[i]); // VBO °»½Å
+		updateTng(tngs[i]); // VBO ê°±ì‹ 
 	}
 }
 
 void SetSpiral()
 {
-	// »ï°¢ÇüµéÀ» ½ÃÀÛ À§Ä¡·Î ÇÑ ¹ø¸¸ ÀÌµ¿
+	// ì‚¼ê°í˜•ë“¤ì„ ì‹œì‘ ìœ„ì¹˜ë¡œ í•œ ë²ˆë§Œ ì´ë™
 	float sx = -0.2f;
 	float sy = 1.0f;
 	for (int i = 0; i < tngs.size(); i++)
@@ -329,40 +333,60 @@ void SetSpiral()
 			v.x += dx;
 			v.y += dy;
 		}
-		tngs[i].spiralIdx = 0; // ½ºÆÄÀÌ·² ÀÎµ¦½ºµµ 0À¸·Î ÃÊ±âÈ­
+		tngs[i].spiralIdx = 0; // ìŠ¤íŒŒì´ëŸ´ ì¸ë±ìŠ¤ë„ 0ìœ¼ë¡œ ì´ˆê¸°í™”
 		updateTng(tngs[i]);
 		sx += 0.2f;
 	}
 }
 
-// »ç°¢ ½ºÆÄÀÌ·²
+void SetSpiral2()
+{
+	// ì‚¼ê°í˜•ë“¤ì„ ì‹œì‘ ìœ„ì¹˜ë¡œ í•œ ë²ˆë§Œ ì´ë™
+	float sx = 0.2f;
+	float sy = 0.0f;
+	for (int i = 0; i < tngs.size(); i++)
+	{
+		float dx = sx - tngs[i].vertices[0].x;
+		float dy = sy - tngs[i].vertices[0].y;
+		for (auto& v : tngs[i].vertices)
+		{
+			v.x += dx;
+			v.y += dy;
+		}
+		tngs[i].spiralIdx = 0; // ìŠ¤íŒŒì´ëŸ´ ì¸ë±ìŠ¤ë„ 0ìœ¼ë¡œ ì´ˆê¸°í™”
+		updateTng(tngs[i]);
+		sx += 0.2f;
+	}
+}
+
+// ì‚¬ê° ìŠ¤íŒŒì´ëŸ´
 void Moving2()
 {
-	float moveSpeed = 0.01f; // ÀÌµ¿ ¼Óµµ(Á¶Àı °¡´É)
+	float moveSpeed = 0.03f; // ì´ë™ ì†ë„(ì¡°ì ˆ ê°€ëŠ¥)
 
 	for (int i = 0; i < tngs.size(); i++)
 	{
 		Tng& t = tngs[i];
-		// spiralRectÀÇ ¸ñÇ¥ ÁÂÇ¥
+		// spiralRectì˜ ëª©í‘œ ì¢Œí‘œ
 		int idx = t.spiralIdx;
-		if (idx >= 15) continue; // spiralRect ¹üÀ§ ÃÊ°ú ¹æÁö
+		if (idx >= 15) continue; // spiralRect ë²”ìœ„ ì´ˆê³¼ ë°©ì§€
 
 		float tx = spiralRect[idx].x;
 		float ty = spiralRect[idx].y;
 
-		// ÇöÀç »ï°¢ÇüÀÇ ±âÁØÁ¡(Ã¹ ¹øÂ° ²ÀÁşÁ¡) À§Ä¡
+		// í˜„ì¬ ì‚¼ê°í˜•ì˜ ê¸°ì¤€ì (ì²« ë²ˆì§¸ ê¼­ì§“ì ) ìœ„ì¹˜
 		float cx = t.vertices[0].x;
 		float cy = t.vertices[0].y;
 
-		// ¸ñÇ¥Á¡±îÁöÀÇ º¤ÅÍ
+		// ëª©í‘œì ê¹Œì§€ì˜ ë²¡í„°
 		float dx = tx - cx;
 		float dy = ty - cy;
 		float dist = sqrt(dx * dx + dy * dy);
 
-		// ¸ñÇ¥Á¡¿¡ °ÅÀÇ µµ´ŞÇÏ¸é ´ÙÀ½ ÀÎµ¦½º·Î
+		// ëª©í‘œì ì— ê±°ì˜ ë„ë‹¬í•˜ë©´ ë‹¤ìŒ ì¸ë±ìŠ¤ë¡œ
 		if (dist < moveSpeed)
 		{
-			// Á¤È®È÷ ¸ñÇ¥Á¡¿¡ ¸ÂÃß°í ´ÙÀ½ ¸ñÇ¥·Î
+			// ì •í™•íˆ ëª©í‘œì ì— ë§ì¶”ê³  ë‹¤ìŒ ëª©í‘œë¡œ
 			float ddx = tx - cx;
 			float ddy = ty - cy;
 			for (auto& v : t.vertices)
@@ -373,14 +397,93 @@ void Moving2()
 			t.spiralIdx++;
 			if (t.spiralIdx >= 15) 
 			{
-				// Áï½Ã ½ÃÀÛ À§Ä¡·Î Á¡ÇÁ
+				// ì‹œì‘ ìœ„ì¹˜ë¡œ 
 				SetSpiral();
-				//t.spiralIdx = 1; // ´ÙÀ½ ¸ñÇ¥´Â spiralRect[1]
 			}
 		}
 		else
 		{
-			// ¹æÇâ ´ÜÀ§º¤ÅÍ·Î moveSpeed¸¸Å­ ÀÌµ¿
+			// ë°©í–¥ ë‹¨ìœ„ë²¡í„°ë¡œ moveSpeedë§Œí¼ ì´ë™
+			float mx = dx / dist * moveSpeed;
+			float my = dy / dist * moveSpeed;
+			for (auto& v : t.vertices)
+			{
+				v.x += mx;
+				v.y += my;
+			}
+		}
+		updateTng(t);
+	}
+}
+
+void InitSpiralCircle()
+{
+	float cx = 0.0f, cy = 0.0f; // ì¤‘ì‹¬
+	float r0 = 0.2f;            // ì‹œì‘ ë°˜ì§€ë¦„
+	float dr = 0.012f;         // í•œ ë°”í€´ë§ˆë‹¤ ë°˜ì§€ë¦„ ë³€í™”ëŸ‰(ìŒìˆ˜ë©´ ì•ˆìª½ìœ¼ë¡œ ê°)
+	float turns = 4.5f;         // ëª‡ ë°”í€´ ëŒì§€
+
+	for (int i = 0; i < spiralCircleN; i++)
+	{
+		float t = (float)i / (spiralCircleN - 1); // 0~1
+		float theta = t * turns * 2.0f * 3.141592f;
+		float r = r0 + dr * t * spiralCircleN;
+		spiralCircle[i].x = cx + r * cos(theta);
+		spiralCircle[i].y = cy + r * sin(theta);
+	}
+}
+
+// ì› ìŠ¤íŒŒì´ëŸ´
+void Moving3()
+{
+	float moveSpeed = 0.03f; // ì´ë™ ì†ë„(ì¡°ì ˆ ê°€ëŠ¥)
+
+	for (int i = 0; i < tngs.size(); i++)
+	{
+		Tng& t = tngs[i];
+		int idx = t.spiralIdx;
+		if (idx >= spiralCircleN) continue; // spiralCircle ë²”ìœ„ ì´ˆê³¼ ë°©ì§€
+
+		float tx = spiralCircle[idx].x;
+		float ty = spiralCircle[idx].y;
+
+		// í˜„ì¬ ì‚¼ê°í˜•ì˜ ê¸°ì¤€ì (ì²« ë²ˆì§¸ ê¼­ì§“ì ) ìœ„ì¹˜
+		float cx = t.vertices[0].x;
+		float cy = t.vertices[0].y;
+
+		// ëª©í‘œì ê¹Œì§€ì˜ ë²¡í„°
+		float dx = tx - cx;
+		float dy = ty - cy;
+		float dist = sqrt(dx * dx + dy * dy);
+
+		// ëª©í‘œì ì— ê±°ì˜ ë„ë‹¬í•˜ë©´ ë‹¤ìŒ ì¸ë±ìŠ¤ë¡œ
+		if (dist < moveSpeed)
+		{
+			// ì •í™•íˆ ëª©í‘œì ì— ë§ì¶”ê³  ë‹¤ìŒ ëª©í‘œë¡œ
+			float ddx = tx - cx;
+			float ddy = ty - cy;
+			for (auto& v : t.vertices)
+			{
+				v.x += ddx;
+				v.y += ddy;
+			}
+			t.spiralIdx++;
+			if (t.spiralIdx >= spiralCircleN)
+			{
+				// ì¦‰ì‹œ ì‹œì‘ ìœ„ì¹˜ë¡œ ì í”„
+				float jump_dx = spiralCircle[0].x - t.vertices[0].x;
+				float jump_dy = spiralCircle[0].y - t.vertices[0].y;
+				for (auto& v : t.vertices)
+				{
+					v.x += jump_dx;
+					v.y += jump_dy;
+				}
+				t.spiralIdx = 1; // ë‹¤ìŒ ëª©í‘œëŠ” spiralCircle[1]
+			}
+		}
+		else
+		{
+			// ë°©í–¥ ë‹¨ìœ„ë²¡í„°ë¡œ moveSpeedë§Œí¼ ì´ë™
 			float mx = dx / dist * moveSpeed;
 			float my = dy / dist * moveSpeed;
 			for (auto& v : t.vertices)
@@ -396,10 +499,16 @@ void Moving2()
 void Timer(int value)
 {
 	if (moving[0] || moving[1]) Moving1();
-	if (moving[2]) Moving2();
+	else if (moving[2]) Moving2();
+	else if (moving[3]) Moving3();
+	else 
+	{
+		isTimerRunning = false; // íƒ€ì´ë¨¸ ì¤‘ì§€
+		return;
+	}
 
 	glutPostRedisplay();
-	glutTimerFunc(16, Timer, 0); // ´ÙÀ½ Å¸ÀÌ¸Ó ¿¹¾à (16ms ¡Ö 60fps)
+	glutTimerFunc(16, Timer, 0); // ë‹¤ìŒ íƒ€ì´ë¨¸ ì˜ˆì•½ (16ms â‰’ 60fps)
 }
 
 void Animation()
@@ -409,10 +518,11 @@ void Animation()
 		float speed = 0.03f;
 		for (auto& t : tngs)
 		{
-			t.vx = speed;
+			int random = rand() % 2;
+			if (random) t.vx = -speed;
+			else t.vx = speed;
 			t.vy = speed;
 		}
-		glutTimerFunc(16, Timer, 0);
 	}
 	else if (moving[1])
 	{
@@ -423,11 +533,18 @@ void Animation()
 			t.vx = dx;
 			t.vy = dy;
 		}
-		glutTimerFunc(16, Timer, 0);
 	}
 	else if (moving[2])
 	{
 		SetSpiral();
+	}
+	else if (moving[3])
+	{
+		SetSpiral2();
+	}
+	if (!isTimerRunning) 
+	{
+		isTimerRunning = true;
 		glutTimerFunc(16, Timer, 0);
 	}
 }
@@ -461,6 +578,13 @@ void Keyboard(unsigned char key, int x, int y)
 		Animation();
 		break;
 	case '4':
+		moving[3] = !moving[3];
+		for (int i = 0; i < 4; i++)
+		{
+			if (i == 3) continue;
+			moving[i] = false;
+		}
+		Animation();
 		break;
 	case 'a':
 		isFill = true;
@@ -494,8 +618,10 @@ void main(int argc, char** argv)
 	make_fragmentShaders();
 	shaderProgramID = make_shaderProgram();
 
-	InitCenterCross();  // Ã³À½¿¡ »çºĞ¸é ¼±
-	InitTng();          // Ã³À½¿¡ °¢ »çºĞ¸é¿¡ »ï°¢Çü ±×¸®±â
+	InitCenterCross();  // ì²˜ìŒì— ì‚¬ë¶„ë©´ ì„ 
+	InitTng();          // ì²˜ìŒì— ê° ì‚¬ë¶„ë©´ì— ì‚¼ê°í˜• ê·¸ë¦¬ê¸°
+
+	InitSpiralCircle();  // ì› ìŠ¤íŒŒì´ëŸ´ ì¢Œí‘œ
 
 	glutDisplayFunc(drawScene);
 	glutReshapeFunc(Reshape);
@@ -574,11 +700,11 @@ GLvoid drawScene()
 	glUseProgram(shaderProgramID);
 	GLint locColor = glGetUniformLocation(shaderProgramID, "uColor");
 
-	// --- Áß¾Ó ½ÊÀÚ¼± ±×¸®±â ---
-	glUniform4f(locColor, 0.0f, 0.0f, 0.0f, 1.0f);   // °ËÁ¤»ö
+	// --- ì¤‘ì•™ ì‹­ìì„  ê·¸ë¦¬ê¸° ---
+	glUniform4f(locColor, 0.0f, 0.0f, 0.0f, 1.0f);   // ê²€ì •ìƒ‰
 	glBindVertexArray(axisVAO);
-	glLineWidth(1.0f);                                // µå¶óÀÌ¹ö µû¶ó >1.0Àº ¹«½ÃµÉ ¼ö ÀÖÀ½
-	glDrawArrays(GL_LINES, 0, 4);                     // 2°³ÀÇ ¼±ºĞ(ÃÑ 4°³ Á¤Á¡)
+	glLineWidth(1.0f);                                // ë“œë¼ì´ë²„ ë”°ë¼ >1.0ì€ ë¬´ì‹œë  ìˆ˜ ìˆìŒ
+	glDrawArrays(GL_LINES, 0, 4);                     // 2ê°œì˜ ì„ ë¶„(ì´ 4ê°œ ì •ì )
 	glBindVertexArray(0);
 
 	if (isFill)
