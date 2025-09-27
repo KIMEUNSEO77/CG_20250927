@@ -55,7 +55,7 @@ struct Tng
 	int space;   // 몇 사분면인지
 
 	float vx, vy;    // 이동 속도
-	int spiralIdx = 0; // 현재 목표 
+	int spiralIdx = 0; // 현재 목표(사각 스파이럴)
 };
 vector<Tng> tngs;
 
@@ -153,7 +153,7 @@ void RemoveTriangle()
 		if (addedSpace == tngs[i].space)
 		{
 			tngs.erase(tngs.begin() + i);
-			break; // 삭제 후 반복문 종료
+			break;
 		}
 	}
 }
@@ -303,7 +303,6 @@ bool IsWallY(Tng& tng, float bottomY, float topY)
 
 void Moving1()
 {
-	// 삼각형 위치 이동
 	for (int i = 0; i < tngs.size(); i++)
 	{
 		if (!IsWallX(tngs[i], tngs[i].vertices[1].x, tngs[i].vertices[2].x))
@@ -321,7 +320,6 @@ void Moving1()
 
 void SetSpiral()
 {
-	// 삼각형들을 시작 위치로 한 번만 이동
 	float sx = -0.2f;
 	float sy = 1.0f;
 	for (int i = 0; i < tngs.size(); i++)
@@ -333,7 +331,7 @@ void SetSpiral()
 			v.x += dx;
 			v.y += dy;
 		}
-		tngs[i].spiralIdx = 0; // 스파이럴 인덱스도 0으로 초기화
+		tngs[i].spiralIdx = 0;
 		updateTng(tngs[i]);
 		sx += 0.2f;
 	}
@@ -341,7 +339,6 @@ void SetSpiral()
 
 void SetSpiral2()
 {
-	// 삼각형들을 시작 위치로 한 번만 이동
 	float sx = 0.2f;
 	float sy = 0.0f;
 	for (int i = 0; i < tngs.size(); i++)
@@ -353,7 +350,7 @@ void SetSpiral2()
 			v.x += dx;
 			v.y += dy;
 		}
-		tngs[i].spiralIdx = 0; // 스파이럴 인덱스도 0으로 초기화
+		tngs[i].spiralIdx = 0;
 		updateTng(tngs[i]);
 		sx += 0.2f;
 	}
@@ -362,23 +359,19 @@ void SetSpiral2()
 // 사각 스파이럴
 void Moving2()
 {
-	float moveSpeed = 0.03f; // 이동 속도(조절 가능)
+	float moveSpeed = 0.03f; // 이동 속도
 
 	for (int i = 0; i < tngs.size(); i++)
 	{
-		Tng& t = tngs[i];
-		// spiralRect의 목표 좌표
-		int idx = t.spiralIdx;
-		if (idx >= 15) continue; // spiralRect 범위 초과 방지
+		int idx = tngs[i].spiralIdx;   // 현재 목표 좌표 인덱스
+		if (idx >= 15) continue;
 
-		float tx = spiralRect[idx].x;
-		float ty = spiralRect[idx].y;
+		float tx = spiralRect[idx].x;  // 현재 목표 x
+		float ty = spiralRect[idx].y;  // 현재 목표 y
 
-		// 현재 삼각형의 기준점(첫 번째 꼭짓점) 위치
-		float cx = t.vertices[0].x;
-		float cy = t.vertices[0].y;
+		float cx = tngs[i].vertices[0].x;  // 삼각형 기준x
+		float cy = tngs[i].vertices[0].y;  // 삼각형 기준y
 
-		// 목표점까지의 벡터
 		float dx = tx - cx;
 		float dy = ty - cy;
 		float dist = sqrt(dx * dx + dy * dy);
@@ -386,49 +379,39 @@ void Moving2()
 		// 목표점에 거의 도달하면 다음 인덱스로
 		if (dist < moveSpeed)
 		{
-			// 정확히 목표점에 맞추고 다음 목표로
-			float ddx = tx - cx;
-			float ddy = ty - cy;
-			for (auto& v : t.vertices)
-			{
-				v.x += ddx;
-				v.y += ddy;
-			}
-			t.spiralIdx++;
-			if (t.spiralIdx >= 15) 
-			{
-				// 시작 위치로 
-				SetSpiral();
-			}
+			tngs[i].spiralIdx++;
+			if (tngs[i].spiralIdx >= 15) SetSpiral();   // 시작 위치로
 		}
 		else
 		{
-			// 방향 단위벡터로 moveSpeed만큼 이동
+			// 속도에 단위 벡터를 곱해 방향으로 이동
 			float mx = dx / dist * moveSpeed;
 			float my = dy / dist * moveSpeed;
-			for (auto& v : t.vertices)
+			for (auto& v : tngs[i].vertices)
 			{
 				v.x += mx;
 				v.y += my;
 			}
 		}
-		updateTng(t);
+		updateTng(tngs[i]);
 	}
 }
 
+// 원 스파이럴 목표 좌표 초기화
 void InitSpiralCircle()
 {
 	float cx = 0.0f, cy = 0.0f; // 중심
 	float r0 = 0.2f;            // 시작 반지름
-	float dr = 0.012f;         // 한 바퀴마다 반지름 변화량(음수면 안쪽으로 감)
+	float dr = 0.012f;          // 한 바퀴마다 반지름 변화량
 	float turns = 4.5f;         // 몇 바퀴 돌지
 
 	for (int i = 0; i < spiralCircleN; i++)
 	{
-		float t = (float)i / (spiralCircleN - 1); // 0~1
-		float theta = t * turns * 2.0f * 3.141592f;
+		float t = (float)i / (spiralCircleN - 1); // 0~1로 정규화된 진행도
+		float theta = t * turns * 2.0f * 3.141592f; // 0~turns*2파이까지 선형 증가하는 각도
 		float r = r0 + dr * t * spiralCircleN;
-		spiralCircle[i].x = cx + r * cos(theta);
+		// 극 좌표 (r, 세타)를 직교 좌표 (x, y)로 변환
+		spiralCircle[i].x = cx + r * cos(theta);  
 		spiralCircle[i].y = cy + r * sin(theta);
 	}
 }
@@ -436,22 +419,19 @@ void InitSpiralCircle()
 // 원 스파이럴
 void Moving3()
 {
-	float moveSpeed = 0.03f; // 이동 속도(조절 가능)
+	float moveSpeed = 0.05f; // 이동 속도
 
 	for (int i = 0; i < tngs.size(); i++)
 	{
-		Tng& t = tngs[i];
-		int idx = t.spiralIdx;
-		if (idx >= spiralCircleN) continue; // spiralCircle 범위 초과 방지
+		int idx = tngs[i].spiralIdx;
+		if (idx >= spiralCircleN) continue; 
 
-		float tx = spiralCircle[idx].x;
-		float ty = spiralCircle[idx].y;
+		float tx = spiralCircle[idx].x;  // 목표 지점 x
+		float ty = spiralCircle[idx].y;  // 목표 지점 y
 
-		// 현재 삼각형의 기준점(첫 번째 꼭짓점) 위치
-		float cx = t.vertices[0].x;
-		float cy = t.vertices[0].y;
+		float cx = tngs[i].vertices[0].x;  // 삼각형 기준 x
+		float cy = tngs[i].vertices[0].y;  // 삼각형 기준 y
 
-		// 목표점까지의 벡터
 		float dx = tx - cx;
 		float dy = ty - cy;
 		float dist = sqrt(dx * dx + dy * dy);
@@ -459,40 +439,20 @@ void Moving3()
 		// 목표점에 거의 도달하면 다음 인덱스로
 		if (dist < moveSpeed)
 		{
-			// 정확히 목표점에 맞추고 다음 목표로
-			float ddx = tx - cx;
-			float ddy = ty - cy;
-			for (auto& v : t.vertices)
-			{
-				v.x += ddx;
-				v.y += ddy;
-			}
-			t.spiralIdx++;
-			if (t.spiralIdx >= spiralCircleN)
-			{
-				// 즉시 시작 위치로 점프
-				float jump_dx = spiralCircle[0].x - t.vertices[0].x;
-				float jump_dy = spiralCircle[0].y - t.vertices[0].y;
-				for (auto& v : t.vertices)
-				{
-					v.x += jump_dx;
-					v.y += jump_dy;
-				}
-				t.spiralIdx = 1; // 다음 목표는 spiralCircle[1]
-			}
+			tngs[i].spiralIdx++;
+			if (tngs[i].spiralIdx >= spiralCircleN) SetSpiral2();
 		}
 		else
 		{
-			// 방향 단위벡터로 moveSpeed만큼 이동
 			float mx = dx / dist * moveSpeed;
 			float my = dy / dist * moveSpeed;
-			for (auto& v : t.vertices)
+			for (auto& v : tngs[i].vertices)
 			{
 				v.x += mx;
 				v.y += my;
 			}
 		}
-		updateTng(t);
+		updateTng(tngs[i]);
 	}
 }
 
@@ -534,14 +494,9 @@ void Animation()
 			t.vy = dy;
 		}
 	}
-	else if (moving[2])
-	{
-		SetSpiral();
-	}
-	else if (moving[3])
-	{
-		SetSpiral2();
-	}
+	else if (moving[2]) SetSpiral();
+	else if (moving[3]) SetSpiral2();
+
 	if (!isTimerRunning) 
 	{
 		isTimerRunning = true;
@@ -555,8 +510,7 @@ void Keyboard(unsigned char key, int x, int y)
 	{
 	case '1':
 		moving[0] = !moving[0];
-		for (int i = 1; i < 4; i++)
-			moving[i] = false;
+		for (int i = 1; i < 4; i++) moving[i] = false;		
 		Animation();
 		break;
 	case '2':
@@ -698,7 +652,7 @@ GLvoid drawScene()
 	glClear(GL_COLOR_BUFFER_BIT);
 
 	glUseProgram(shaderProgramID);
-	GLint locColor = glGetUniformLocation(shaderProgramID, "uColor");
+	GLint locColor = glGetUniformLocation(shaderProgramID, "uColor");  // 세이더에 있는 uColor 위치가져옴
 
 	// --- 중앙 십자선 그리기 ---
 	glUniform4f(locColor, 0.0f, 0.0f, 0.0f, 1.0f);   // 검정색
