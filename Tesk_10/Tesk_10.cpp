@@ -317,6 +317,18 @@ void Animation()
 		}
 		glutTimerFunc(16, Timer, 0);
 	}
+
+	else if (moving[1])
+	{
+		speed = 0.05f;
+		float dy = -0.002f;
+		for (auto& t : tngs)
+		{
+			t.vx = speed;
+			t.vy = dy;
+		}
+		glutTimerFunc(16, Timer, 0);
+	}
 }
 
 void Keyboard(unsigned char key, int x, int y)
@@ -330,6 +342,13 @@ void Keyboard(unsigned char key, int x, int y)
 		Animation();
 		break;
 	case '2':
+		moving[1] = !moving[1];
+		for (int i = 0; i < 4; i++)
+		{
+			if (i == 1) continue;
+			moving[i] = false;
+		}
+		Animation();
 		break;
 	case '3':
 		break;
