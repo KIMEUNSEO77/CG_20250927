@@ -33,6 +33,8 @@ int addedSpace = -1;  // 방금 추가된 삼각형 사분면
 int spaceCount[4] = { 1, 1, 1, 1 };   // 해당 사분면에 삼각형이 몇 개 있는지
 
 bool isFill = true;
+float speed = 0.0f;
+bool moving[4];  // true인 인덱스대로 움직임
 
 struct Tng
 {
@@ -41,6 +43,8 @@ struct Tng
 	glm::vec4 color;
 	int vertCount() const { return (int)vertices.size(); }
 	int space;   // 몇 사분면인지
+
+	float vx, vy;    // 이동 속도
 };
 vector<Tng> tngs;
 
@@ -263,11 +267,67 @@ void Reset()
 	glutPostRedisplay();
 }
 
+bool IsWallX(Tng& tng, float leftX, float rightX)
+{
+	float n1 = leftX + tng.vx;
+	float n2 = rightX + tng.vx;
+
+	if (n1 >= -1.0f && n2 <= 1.0f) return true;
+	return false;
+}
+
+bool IsWallY(Tng& tng, float bottomY, float topY)
+{
+	float n1 = bottomY + tng.vy;
+	float n2 = topY + tng.vy;
+
+	if (n1 >= -1.0f && n2 <= 1.0f) return true;
+	return false;
+}
+
+void Timer(int value)
+{
+	// 삼각형 위치 이동
+	for (int i = 0; i < tngs.size(); i++)
+	{
+		if (!IsWallX(tngs[i], tngs[i].vertices[1].x, tngs[i].vertices[2].x))
+			tngs[i].vx = -tngs[i].vx;
+		if (!IsWallY(tngs[i], tngs[i].vertices[1].y, tngs[i].vertices[0].y))
+			tngs[i].vy = -tngs[i].vy;
+		for (auto& v : tngs[i].vertices)
+		{
+			v.x += tngs[i].vx;
+			v.y += tngs[i].vy;
+		}
+		updateTng(tngs[i]); // VBO 갱신
+	}
+	glutPostRedisplay();
+	glutTimerFunc(16, Timer, 0); // 다음 타이머 예약 (16ms ≒ 60fps)
+}
+
+void Animation()
+{
+	if (moving[0])
+	{
+		speed = 0.03f;
+		for (auto& t : tngs)
+		{
+			t.vx = speed;
+			t.vy = speed;
+		}
+		glutTimerFunc(16, Timer, 0);
+	}
+}
+
 void Keyboard(unsigned char key, int x, int y)
 {
 	switch (key)
 	{
 	case '1':
+		moving[0] = !moving[0];
+		for (int i = 1; i < 4; i++)
+			moving[i] = false;
+		Animation();
 		break;
 	case '2':
 		break;
