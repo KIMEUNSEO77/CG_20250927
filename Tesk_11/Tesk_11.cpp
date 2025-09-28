@@ -9,7 +9,7 @@
 #include <glm/ext.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <vector>
-#include <cmath>
+#include <random>
 
 void make_vertexShaders();
 void make_fragmentShaders();
@@ -26,11 +26,10 @@ struct Spiral
 	GLuint VAO = 0, VBO = 0;
 
 	float cx, cy;     // 중심
-	float a, b;       // 파라미터
+	float a, b;       // 시작 반지름, 반지름 증가량
 	float theta;      // 현재 각도
 	int dir;          // 방향 (1: 시계, -1: 반시계)
-	//bool inward;      // true: 밖→안, false: 안→밖
-	std::vector<glm::vec2> vertices; // 그려질 점들
+	std::vector<glm::vec2> vertices;
 
 	int drawCount = 0; // 현재 그릴 점 개수(애니메이션)
 };
@@ -39,6 +38,29 @@ float mouseX = 0.0f, mouseY = 0.0f;
 std::vector<Spiral> spirals;
 
 bool timerActive = false;
+bool isLine = false;
+
+float bgColor[3] = { 0.0f, 0.0f, 0.0f };
+
+float randomFloat(float a, float b)
+{
+	std::random_device rd;
+	std::mt19937 gen(rd());
+	std::uniform_real_distribution<float> dist(a, b);
+
+	return dist(gen);
+}
+
+void RandomBG()
+{
+	std::random_device rd;
+	std::mt19937 gen(rd());
+	std::uniform_real_distribution<float> dist(0.0f, 1.0f);
+
+	bgColor[0] = randomFloat(0.0f, 1.0f);
+	bgColor[1] = randomFloat(0.0f, 1.0f);
+	bgColor[2] = randomFloat(0.0f, 1.0f);
+}
 
 void UpdateSpiral(Spiral& s)
 {
@@ -58,8 +80,6 @@ void UpdateSpiral(Spiral& s)
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
-bool isAnimating = false;
-
 void Timer(int value)
 {
 	bool needMore = false;
@@ -72,17 +92,17 @@ void Timer(int value)
 	}
 	glutPostRedisplay();
 	if (needMore)
-		glutTimerFunc(10, Timer, 0); // 10ms마다 호출 (속도 조절 가능)
+		glutTimerFunc(10, Timer, 0);
 	else
-		isAnimating = false;
+		timerActive = false;
 }
 
-void AddSpiral()
+void AddSpiral(float x, float y)
 {
 	// 원 스파이럴 파라미터
 	Spiral s;
-	s.cx = mouseX;
-	s.cy = mouseY;
+	s.cx = x;
+	s.cy = y;
 	s.a = 0.002f;         // 시작 반지름
 	s.b = 0.0015f;        // 반지름 증가량
 	s.theta = 0.0f;
@@ -178,10 +198,30 @@ void Mouse(int button, int state, int x, int y)
 		if (state == GLUT_DOWN)
 		{
 			PixelTrans(x, y, mouseX, mouseY);
-			AddSpiral();
+			AddSpiral(mouseX, mouseY);
+			RandomBG();
 
 			glutPostRedisplay();
 		}
+	}
+}
+
+void Reset()
+{
+	spirals.clear();
+	glutPostRedisplay();
+}
+
+void RandomSpiral(int index)
+{
+	for (int i = 0; i < index; ++i)
+	{
+		float x = randomFloat(-0.8f, 0.6f);
+		float y = randomFloat(-0.9f, 0.9f);
+
+		AddSpiral(x, y);
+		RandomBG();
+		glutPostRedisplay();
 	}
 }
 
@@ -189,6 +229,30 @@ void Keyboard(unsigned char key, int x, int y)
 {
 	switch (key)
 	{
+	case '1':
+		RandomSpiral(1);
+		break;
+	case '2':
+		RandomSpiral(2);
+		break;
+	case '3':
+		RandomSpiral(3);
+		break;
+	case '4':
+		RandomSpiral(4);
+		break;
+	case '5':
+		RandomSpiral(5);
+		break;
+	case 'p':
+		isLine = false;
+		break;
+	case 'l':
+		isLine = true;
+		break;
+	case 'c':
+		Reset();
+		break;
 	case 'q':
 		exit(0);
 		break;
@@ -281,7 +345,7 @@ GLuint make_shaderProgram()
 
 GLvoid drawScene()
 {
-	glClearColor(0.0, 0.0, 1.0, 1.0f);
+	glClearColor(bgColor[0], bgColor[1], bgColor[2], 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT);
 
 	glUseProgram(shaderProgramID);
@@ -293,7 +357,29 @@ GLvoid drawScene()
 		glBindVertexArray(s.VAO);
 		int n = s.drawCount;
 		if (n > 1)
-			glDrawArrays(GL_LINE_STRIP, 0, n);
+		{
+			if (isLine)
+			{
+				glDrawArrays(GL_LINE_STRIP, 0, n);
+			}
+			else
+			{
+				// 점선 효과: 일정 간격으로만 점을 찍음
+				glPointSize(2.0f); // 점 크기 조절
+				std::vector<GLuint> indices;
+				int dashLen = 6, gapLen = 6;
+				int pattern = dashLen + gapLen;
+				for (int i = 0; i < n; ++i)
+				{
+					if ((i % pattern) < dashLen)
+						indices.push_back(i);
+				}
+				// 임시로 점만 찍기
+				glEnable(GL_PROGRAM_POINT_SIZE);
+				glDrawElements(GL_POINTS, (GLsizei)indices.size(), GL_UNSIGNED_INT, indices.data());
+				glDisable(GL_PROGRAM_POINT_SIZE);
+			}
+		}
 	}
 
 	glutSwapBuffers();
