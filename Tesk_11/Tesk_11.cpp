@@ -9,6 +9,7 @@
 #include <glm/ext.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <vector>
+#include <cmath>
 
 void make_vertexShaders();
 void make_fragmentShaders();
@@ -28,7 +29,7 @@ struct Spiral
 	float a, b;       // 파라미터
 	float theta;      // 현재 각도
 	int dir;          // 방향 (1: 시계, -1: 반시계)
-	bool inward;      // true: 밖→안, false: 안→밖
+	//bool inward;      // true: 밖→안, false: 안→밖
 	std::vector<glm::vec2> vertices; // 그려질 점들
 
 	int drawCount = 0; // 현재 그릴 점 개수(애니메이션)
@@ -86,15 +87,39 @@ void AddSpiral()
 	s.b = 0.0015f;        // 반지름 증가량
 	s.theta = 0.0f;
 	s.dir = 1;           // 시계방향
-	s.inward = false;    // 안->밖
 
 	int n = 100;         // 점 개수(궤적의 부드러움)
 	float turns = 3.0f;  // 몇 바퀴 돌지
 	s.vertices.clear();
+
+	float theta_out = 0.0f;
+	float r_out = 0.0f;
+
 	for (int i = 0; i < n; ++i)
 	{
 		float t = (float)i / (n - 1);
 		float theta = t * turns * 2.0f * 3.141592f * s.dir;
+		float r = s.a + s.b * t * n;
+		float x = s.cx + r * cos(theta);
+		float y = s.cy + r * sin(theta);
+		if (i == n - 1) { theta_out = theta; s.a = r; }
+		s.vertices.push_back(glm::vec2(x, y));
+	}
+	float x_end = s.vertices.back().x;
+	float y_end = s.vertices.back().y;
+	float cx2 = s.cx + 0.2f;
+	float cy2 = s.cy;
+
+	// 바깥 끝 상태
+	s.cx += 0.3f;
+	s.dir = -1;      // 반시계방향
+	s.b = -0.0015f;        // 반지름 증가량
+	float theta0 = atan2f(y_end - cy2, x_end - cx2) + 3.141592f * 1.5f;
+
+	for (int i = 0; i < n; ++i)
+	{
+		float t = (float)i / (n - 1);
+		float theta = theta0 + t * turns * 2.0f * 3.141592f * s.dir;
 		float r = s.a + s.b * t * n;
 		float x = s.cx + r * cos(theta);
 		float y = s.cy + r * sin(theta);
