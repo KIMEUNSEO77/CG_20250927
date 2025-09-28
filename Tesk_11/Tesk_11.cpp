@@ -31,7 +31,7 @@ struct Spiral
 	int dir;          // 방향 (1: 시계, -1: 반시계)
 	std::vector<glm::vec2> vertices;
 
-	int drawCount = 0; // 현재 그릴 점 개수(애니메이션)
+	int drawCount = 0; // 현재 그린 점 개수(애니메이션)
 };
 
 float mouseX = 0.0f, mouseY = 0.0f;
@@ -99,7 +99,6 @@ void Timer(int value)
 
 void AddSpiral(float x, float y)
 {
-	// 원 스파이럴 파라미터
 	Spiral s;
 	s.cx = x;
 	s.cy = y;
@@ -108,7 +107,7 @@ void AddSpiral(float x, float y)
 	s.theta = 0.0f;
 	s.dir = 1;           // 시계방향
 
-	int n = 100;         // 점 개수(궤적의 부드러움)
+	int n = 100;         // 점 개수
 	float turns = 3.0f;  // 몇 바퀴 돌지
 	s.vertices.clear();
 
@@ -132,7 +131,7 @@ void AddSpiral(float x, float y)
 
 	// 바깥 끝 상태
 	s.cx += 0.3f;
-	s.dir = -1;      // 반시계방향
+	s.dir = -s.dir;        // 반시계방향
 	s.b = -0.0015f;        // 반지름 증가량
 	float theta0 = atan2f(y_end - cy2, x_end - cx2) + 3.141592f * 1.85f;
 
@@ -364,8 +363,8 @@ GLvoid drawScene()
 			}
 			else
 			{
-				// 점선 효과: 일정 간격으로만 점을 찍음
-				glPointSize(2.0f); // 점 크기 조절
+				// 일정 간격으로만 점 찍음
+				glPointSize(2.0f); // 점 크기
 				std::vector<GLuint> indices;
 				int dashLen = 6, gapLen = 6;
 				int pattern = dashLen + gapLen;
