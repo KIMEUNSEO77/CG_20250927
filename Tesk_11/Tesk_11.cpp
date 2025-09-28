@@ -4,16 +4,34 @@
 #include <iostream>
 #include <glew.h>
 #include <freeglut.h>
-#include <freeglut_ext.h> 
+#include <freeglut_ext.h>
+#include <glm/glm.hpp>
+#include <glm/ext.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <vector>
+
 void make_vertexShaders();
 void make_fragmentShaders();
 GLuint make_shaderProgram();
 GLvoid drawScene();
 GLvoid Reshape(int w, int h);
-GLint width, height;
+GLint width = 1000, height = 800;
 GLuint shaderProgramID;
 GLuint vertexShader;
 GLuint fragmentShader;
+
+struct Spiral 
+{
+	float cx, cy;     // 중심
+	float a, b;       // 파라미터
+	float theta;      // 현재 각도
+	int dir;          // 방향 (1: 시계, -1: 반시계)
+	bool inward;      // true: 밖→안, false: 안→밖
+	std::vector<glm::vec2> points; // 그려질 점들
+};
+
+float mouseX = 0.0f, mouseY = 0.0f;
+std::vector<Spiral> spirals;
 
 char* filetobuf(const char* file)
 {
@@ -43,15 +61,41 @@ char* filetobuf(const char* file)
 	// Return the buffer 
 }
 
+// 마우스 클릭한 좌표 정규화
+void PixelTrans(int px, int py, float& nx, float& ny)
+{
+	nx = 2.0f * px / width - 1.0f;
+	ny = -2.0f * py / height + 1.0f;
+}
+
+void Mouse(int button, int state, int x, int y)
+{
+	if (button == GLUT_LEFT_BUTTON)
+	{
+		if (state == GLUT_DOWN)
+		{
+			PixelTrans(x, y, mouseX, mouseY);
+		}
+	}
+}
+
+void Keyboard(unsigned char key, int x, int y)
+{
+	switch (key)
+	{
+	case 'q':
+		exit(0);
+		break;
+	}
+}
+
 void main(int argc, char** argv)
 {
-	width = 500;
-	height = 500;
 	glutInit(&argc, argv);
 	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA);
 	glutInitWindowPosition(100, 100);
 	glutInitWindowSize(width, height);
-	glutCreateWindow("Test_glsl");
+	glutCreateWindow("Tesk_11");
 
 	glewExperimental = GL_TRUE;
 	glewInit();
@@ -59,6 +103,9 @@ void main(int argc, char** argv)
 	make_vertexShaders();
 	make_fragmentShaders();
 	shaderProgramID = make_shaderProgram();
+
+	glutKeyboardFunc(Keyboard);
+	glutMouseFunc(Mouse);
 	glutDisplayFunc(drawScene);
 	glutReshapeFunc(Reshape);
 	glutMainLoop();
