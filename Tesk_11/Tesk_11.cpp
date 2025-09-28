@@ -32,9 +32,6 @@ struct Spiral
 	std::vector<glm::vec2> vertices; // 그려질 점들
 
 	int drawCount = 0; // 현재 그릴 점 개수(애니메이션)
-	bool outwardDone = false; // 바깥쪽 그리기 완료 여부
-	std::vector<glm::vec2> reverseVertices; // 반대
-	bool isReverse = false; // 밖→안
 };
 
 float mouseX = 0.0f, mouseY = 0.0f;
@@ -60,58 +57,23 @@ void UpdateSpiral(Spiral& s)
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
+bool isAnimating = false;
+
 void Timer(int value)
 {
-    bool needMore = false;
-    std::vector<Spiral> newReverses; // 새로 추가할 reverse 스파이럴들
-
-    for (auto& s : spirals)
-    {
-        if (!s.outwardDone && !s.isReverse)
-        {
-            if (s.drawCount < (int)s.vertices.size())
-            {
-                s.drawCount++;
-                needMore = true;
-            }
-            else if (!s.outwardDone)
-            {
-                s.outwardDone = true;
-                // 밖→안 스파이럴 새로 추가 (for 루프 끝나고 spirals에 추가)
-                Spiral rev;
-                rev.cx = s.cx; rev.cy = s.cy;
-                rev.a = s.a; rev.b = s.b;
-                rev.theta = s.theta;
-                rev.dir = s.dir;
-                rev.inward = true;
-                rev.vertices = s.reverseVertices;
-                rev.reverseVertices = {}; // 필요 없음
-                rev.drawCount = 1;
-                rev.outwardDone = false;
-                rev.isReverse = true;
-                UpdateSpiral(rev);
-                newReverses.push_back(rev); // ★ for 루프 안에서는 newReverses에만 추가
-                needMore = true;
-            }
-        }
-        else if (s.isReverse)
-        {
-            if (s.drawCount < (int)s.vertices.size())
-            {
-                s.drawCount++;
-                needMore = true;
-            }
-        }
-    }
-    // 밖→안 스파이럴을 spirals에 추가 (for 루프 끝나고!)
-    for (auto& rev : newReverses)
-        spirals.push_back(rev);
-
-    glutPostRedisplay();
-    if (needMore)
-        glutTimerFunc(10, Timer, 0);
-    else
-        timerActive = false;
+	bool needMore = false;
+	for (auto& s : spirals)
+	{
+		if (s.drawCount < (int)s.vertices.size()) {
+			s.drawCount++;
+			needMore = true;
+		}
+	}
+	glutPostRedisplay();
+	if (needMore)
+		glutTimerFunc(10, Timer, 0); // 10ms마다 호출 (속도 조절 가능)
+	else
+		isAnimating = false;
 }
 
 void AddSpiral()
@@ -138,13 +100,7 @@ void AddSpiral()
 		float y = s.cy + r * sin(theta);
 		s.vertices.push_back(glm::vec2(x, y));
 	}
-	// 반대 방향 점 배열 준비
-	s.reverseVertices = s.vertices;
-	std::reverse(s.reverseVertices.begin(), s.reverseVertices.end());
 
-	s.drawCount = 1;
-	s.outwardDone = false;
-	s.isReverse = false;
 	UpdateSpiral(s);
 	spirals.push_back(s);
 
@@ -314,6 +270,7 @@ GLvoid drawScene()
 		if (n > 1)
 			glDrawArrays(GL_LINE_STRIP, 0, n);
 	}
+
 	glutSwapBuffers();
 }
 
