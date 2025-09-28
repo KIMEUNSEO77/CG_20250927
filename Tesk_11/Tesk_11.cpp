@@ -114,7 +114,7 @@ void AddSpiral()
 	s.cx += 0.3f;
 	s.dir = -1;      // 반시계방향
 	s.b = -0.0015f;        // 반지름 증가량
-	float theta0 = atan2f(y_end - cy2, x_end - cx2) + 3.141592f * 1.5f;
+	float theta0 = atan2f(y_end - cy2, x_end - cx2) + 3.141592f * 1.85f;
 
 	for (int i = 0; i < n; ++i)
 	{
