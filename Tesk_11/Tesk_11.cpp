@@ -22,16 +22,138 @@ GLuint fragmentShader;
 
 struct Spiral 
 {
+	GLuint VAO = 0, VBO = 0;
+
 	float cx, cy;     // 중심
 	float a, b;       // 파라미터
 	float theta;      // 현재 각도
 	int dir;          // 방향 (1: 시계, -1: 반시계)
 	bool inward;      // true: 밖→안, false: 안→밖
-	std::vector<glm::vec2> points; // 그려질 점들
+	std::vector<glm::vec2> vertices; // 그려질 점들
+
+	int drawCount = 0; // 현재 그릴 점 개수(애니메이션)
+	bool outwardDone = false; // 바깥쪽 그리기 완료 여부
+	std::vector<glm::vec2> reverseVertices; // 반대
+	bool isReverse = false; // 밖→안
 };
 
 float mouseX = 0.0f, mouseY = 0.0f;
 std::vector<Spiral> spirals;
+
+bool timerActive = false;
+
+void UpdateSpiral(Spiral& s)
+{
+	if (!s.VAO) glGenVertexArrays(1, &s.VAO);
+	if (!s.VBO) glGenBuffers(1, &s.VBO);
+
+	std::vector<glm::vec3> verts3;
+	for (auto& v : s.vertices)
+		verts3.push_back(glm::vec3(v.x, v.y, 0.0f));
+
+	glBindVertexArray(s.VAO);
+	glBindBuffer(GL_ARRAY_BUFFER, s.VBO);
+	glBufferData(GL_ARRAY_BUFFER, verts3.size() * sizeof(glm::vec3),
+		verts3.data(), GL_DYNAMIC_DRAW);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+	glEnableVertexAttribArray(0);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+}
+
+void Timer(int value)
+{
+    bool needMore = false;
+    std::vector<Spiral> newReverses; // 새로 추가할 reverse 스파이럴들
+
+    for (auto& s : spirals)
+    {
+        if (!s.outwardDone && !s.isReverse)
+        {
+            if (s.drawCount < (int)s.vertices.size())
+            {
+                s.drawCount++;
+                needMore = true;
+            }
+            else if (!s.outwardDone)
+            {
+                s.outwardDone = true;
+                // 밖→안 스파이럴 새로 추가 (for 루프 끝나고 spirals에 추가)
+                Spiral rev;
+                rev.cx = s.cx; rev.cy = s.cy;
+                rev.a = s.a; rev.b = s.b;
+                rev.theta = s.theta;
+                rev.dir = s.dir;
+                rev.inward = true;
+                rev.vertices = s.reverseVertices;
+                rev.reverseVertices = {}; // 필요 없음
+                rev.drawCount = 1;
+                rev.outwardDone = false;
+                rev.isReverse = true;
+                UpdateSpiral(rev);
+                newReverses.push_back(rev); // ★ for 루프 안에서는 newReverses에만 추가
+                needMore = true;
+            }
+        }
+        else if (s.isReverse)
+        {
+            if (s.drawCount < (int)s.vertices.size())
+            {
+                s.drawCount++;
+                needMore = true;
+            }
+        }
+    }
+    // 밖→안 스파이럴을 spirals에 추가 (for 루프 끝나고!)
+    for (auto& rev : newReverses)
+        spirals.push_back(rev);
+
+    glutPostRedisplay();
+    if (needMore)
+        glutTimerFunc(10, Timer, 0);
+    else
+        timerActive = false;
+}
+
+void AddSpiral()
+{
+	// 원 스파이럴 파라미터
+	Spiral s;
+	s.cx = mouseX;
+	s.cy = mouseY;
+	s.a = 0.002f;         // 시작 반지름
+	s.b = 0.0015f;        // 반지름 증가량
+	s.theta = 0.0f;
+	s.dir = 1;           // 시계방향
+	s.inward = false;    // 안->밖
+
+	int n = 100;         // 점 개수(궤적의 부드러움)
+	float turns = 3.0f;  // 몇 바퀴 돌지
+	s.vertices.clear();
+	for (int i = 0; i < n; ++i)
+	{
+		float t = (float)i / (n - 1);
+		float theta = t * turns * 2.0f * 3.141592f * s.dir;
+		float r = s.a + s.b * t * n;
+		float x = s.cx + r * cos(theta);
+		float y = s.cy + r * sin(theta);
+		s.vertices.push_back(glm::vec2(x, y));
+	}
+	// 반대 방향 점 배열 준비
+	s.reverseVertices = s.vertices;
+	std::reverse(s.reverseVertices.begin(), s.reverseVertices.end());
+
+	s.drawCount = 1;
+	s.outwardDone = false;
+	s.isReverse = false;
+	UpdateSpiral(s);
+	spirals.push_back(s);
+
+	if (!timerActive)
+	{
+		timerActive = true;
+		glutTimerFunc(10, Timer, 0);
+	}
+}
 
 char* filetobuf(const char* file)
 {
@@ -75,6 +197,9 @@ void Mouse(int button, int state, int x, int y)
 		if (state == GLUT_DOWN)
 		{
 			PixelTrans(x, y, mouseX, mouseY);
+			AddSpiral();
+
+			glutPostRedisplay();
 		}
 	}
 }
@@ -175,15 +300,20 @@ GLuint make_shaderProgram()
 
 GLvoid drawScene()
 {
-	GLfloat rColor, gColor, bColor;
-	rColor = gColor = 0.0;
-	bColor = 1.0;
-	glClearColor(rColor, gColor, bColor, 1.0f);
+	glClearColor(0.0, 0.0, 1.0, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT);
 
 	glUseProgram(shaderProgramID);
+	GLint locColor = glGetUniformLocation(shaderProgramID, "uColor");
+	glUniform4f(locColor, 1.0f, 1.0f, 1.0f, 1.0f);
 
-	glDrawArrays(GL_TRIANGLES, 0, 3);
+	for (const auto& s : spirals)
+	{
+		glBindVertexArray(s.VAO);
+		int n = s.drawCount;
+		if (n > 1)
+			glDrawArrays(GL_LINE_STRIP, 0, n);
+	}
 	glutSwapBuffers();
 }
 
