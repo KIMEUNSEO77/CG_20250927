@@ -105,7 +105,7 @@ void AddSpiral(float x, float y)
 	s.a = 0.002f;         // 시작 반지름
 	s.b = 0.0015f;        // 반지름 증가량
 	s.theta = 0.0f;
-	s.dir = 1;           // 시계방향
+	s.dir = 1;           // 시계 방향
 
 	int n = 100;         // 점 개수
 	float turns = 3.0f;  // 몇 바퀴 돌지
@@ -366,7 +366,7 @@ GLvoid drawScene()
 				// 일정 간격으로만 점 찍음
 				glPointSize(2.0f); // 점 크기
 				std::vector<GLuint> indices;
-				int dashLen = 6, gapLen = 6;
+				int dashLen = 1, gapLen = 1;
 				int pattern = dashLen + gapLen;
 				for (int i = 0; i < n; ++i)
 				{
